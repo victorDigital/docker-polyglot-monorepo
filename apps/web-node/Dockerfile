@@ -1,12 +1,12 @@
-FROM node:20-alpine
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json bun.lock* ./
 
 # Install dependencies
-RUN npm install
+RUN bun install
 
 # Copy source code
 COPY . .
@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5173
 
 # Run Vite dev server with --host to bind to 0.0.0.0
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["bun", "run", "dev", "--", "--host", "0.0.0.0"]

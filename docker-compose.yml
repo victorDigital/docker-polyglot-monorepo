@@ -16,10 +16,10 @@ services:
       timeout: 3s
       retries: 5
 
-  # Rust API Service
-  api-rust:
+  # Rust Worker Service
+  worker-rust:
     build:
-      context: ./apps/api-rust
+      context: ./apps/worker-rust
       target: development
     ports:
       - "8080:8080"
@@ -33,13 +33,13 @@ services:
     develop:
       watch:
         - action: sync
-          path: ./apps/api-rust/src
+          path: ./apps/worker-rust/src
           target: /app/src
         - action: sync
-          path: ./apps/api-rust/Cargo.toml
+          path: ./apps/worker-rust/Cargo.toml
           target: /app/Cargo.toml
         - action: rebuild
-          path: ./apps/api-rust/Cargo.lock
+          path: ./apps/worker-rust/Cargo.lock
 
   # Node/Vite Web Service
   web-node:
@@ -60,11 +60,19 @@ services:
           path: ./apps/web-node/src
           target: /app/src
         - action: sync
-          path: ./apps/web-node/index.html
-          target: /app/index.html
+          path: ./apps/web-node/static
+          target: /app/static
         - action: sync
-          path: ./apps/web-node/vite.config.js
-          target: /app/vite.config.js
+          path: ./apps/web-node/vite.config.ts
+          target: /app/vite.config.ts
+        - action: sync
+          path: ./apps/web-node/svelte.config.js
+          target: /app/svelte.config.js
+        - action: sync
+          path: ./apps/web-node/tailwind.config.ts
+          target: /app/tailwind.config.ts
+          ignore:
+            - /app/tailwind.config.ts
         - action: rebuild
           path: ./apps/web-node/package.json
 

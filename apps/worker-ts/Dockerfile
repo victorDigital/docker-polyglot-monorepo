@@ -1,16 +1,16 @@
-FROM node:20-alpine
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
 COPY tsconfig.json ./
 
 # Install dependencies
-RUN npm install
+RUN bun install
 
 # Copy source code
 COPY . .
 
-# Run with ts-node-dev for hot reloading
-CMD ["npm", "run", "dev"]
+# Run with Bun's native TypeScript support and watch mode
+CMD ["bun", "--watch", "src/index.ts"]

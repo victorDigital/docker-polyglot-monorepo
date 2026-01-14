@@ -1,10 +1,13 @@
-# Multi-stage Dockerfile for Rust API
-FROM rust:1.75 AS development
+# Multi-stage Dockerfile for Rust worker
+FROM rust:1.84 AS development
 
 WORKDIR /app
 
-# Install cargo-watch for hot reloading
-RUN cargo install cargo-watch
+# Install cargo-binstall for faster binary installation
+RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+# Install cargo-watch using binstall (faster and more reliable)
+RUN cargo binstall -y cargo-watch
 
 # Copy manifest files
 COPY Cargo.toml Cargo.lock* ./
