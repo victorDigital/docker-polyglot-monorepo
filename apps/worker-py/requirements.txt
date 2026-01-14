@@ -1,0 +1,2 @@
+redis==5.0.1
+watchdog==4.0.0

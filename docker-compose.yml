@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # Redis Infrastructure
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - polyglot-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Rust API Service
+  api-rust:
+    build:
+      context: ./apps/api-rust
+      target: development
+    ports:
+      - "8080:8080"
+    networks:
+      - polyglot-network
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api-rust/src
+          target: /app/src
+        - action: sync
+          path: ./apps/api-rust/Cargo.toml
+          target: /app/Cargo.toml
+        - action: rebuild
+          path: ./apps/api-rust/Cargo.lock
+
+  # Node/Vite Web Service
+  web-node:
+    build:
+      context: ./apps/web-node
+    ports:
+      - "5173:5173"
+    networks:
+      - polyglot-network
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/web-node/src
+          target: /app/src
+        - action: sync
+          path: ./apps/web-node/index.html
+          target: /app/index.html
+        - action: sync
+          path: ./apps/web-node/vite.config.js
+          target: /app/vite.config.js
+        - action: rebuild
+          path: ./apps/web-node/package.json
+
+  # Python Worker Service
+  worker-py:
+    build:
+      context: ./apps/worker-py
+    networks:
+      - polyglot-network
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/worker-py/main.py
+          target: /app/main.py
+        - action: rebuild
+          path: ./apps/worker-py/requirements.txt
+
+  # TypeScript Worker Service
+  worker-ts:
+    build:
+      context: ./apps/worker-ts
+    networks:
+      - polyglot-network
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/worker-ts/src
+          target: /app/src
+        - action: sync
+          path: ./apps/worker-ts/tsconfig.json
+          target: /app/tsconfig.json
+        - action: rebuild
+          path: ./apps/worker-ts/package.json
+
+networks:
+  polyglot-network:
+    driver: bridge
+
+volumes:
+  redis-data:

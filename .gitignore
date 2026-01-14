@@ -1,0 +1,31 @@
+# Root .gitignore for polyglot monorepo
+
+# Node
+node_modules/
+dist/
+.npm
+*.log
+
+# Rust
+target/
+Cargo.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
