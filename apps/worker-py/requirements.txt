@@ -1,2 +1,4 @@
-redis==5.0.1
+redis==5.2.1
 watchdog==4.0.0
+redis-work-queue==0.1.2
+

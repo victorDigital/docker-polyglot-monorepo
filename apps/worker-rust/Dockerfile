@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Rust worker
-FROM rust:1.84 AS development
+FROM rust:1.92 AS development
 
 WORKDIR /app
 
@@ -31,7 +31,7 @@ EXPOSE 8080
 CMD ["cargo", "watch", "-x", "run"]
 
 # Production stage
-FROM rust:1.75 AS builder
+FROM rust:1.92 AS builder
 
 WORKDIR /app
 

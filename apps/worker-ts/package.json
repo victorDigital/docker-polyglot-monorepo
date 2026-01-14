@@ -7,6 +7,8 @@
     "start": "bun src/index.ts"
   },
   "dependencies": {
+    "@mevitae/redis-work-queue": "^0.1.5",
+    "ioredis": "^5.9.1"
   },
   "devDependencies": {
     "@types/bun": "^1.3.6"
