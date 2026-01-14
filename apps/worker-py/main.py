@@ -21,27 +21,27 @@ def process_task(item: Item):
     """Process a single task"""
     try:
         data = item.data_json()
-        expression = data['expression']
+        number = data['number']
         client_id = data['clientId']
         
-        print(f"Processing task {item.id()}: {expression}")
+        print(f"Processing task {item.id()}: count primes up to {number}")
         
-        # Evaluate the expression
+        # Compute the number of primes <= number
         result = None
         error = None
         
         try:
-            result = eval(expression)
+            result = count_primes(number)
             print(f"Result: {result}")
         except Exception as e:
             error = str(e)
-            print(f"Error evaluating expression: {error}")
+            print(f"Error computing primes: {error}")
         
         # Publish result back via Redis pub/sub
         result_data = {
             'taskId': item.id(),
             'clientId': client_id,
-            'expression': expression,
+            'number': number,
             'result': str(result) if error is None else None,
             'error': error,
             'language': 'python',
@@ -57,6 +57,22 @@ def process_task(item: Item):
     except Exception as error:
         print(f"Error processing task: {error}")
         # Don't mark as complete so it can be retried
+
+def count_primes(n: int) -> int:
+    """Count the number of prime numbers less than or equal to n"""
+    if n < 2:
+        return 0
+    
+    # Sieve of Eratosthenes
+    is_prime = [True] * (n + 1)
+    is_prime[0] = is_prime[1] = False
+    
+    for i in range(2, int(n**0.5) + 1):
+        if is_prime[i]:
+            for j in range(i*i, n+1, i):
+                is_prime[j] = False
+    
+    return sum(is_prime)
 
 def main():
     print("Worker PY is running and waiting for tasks...")

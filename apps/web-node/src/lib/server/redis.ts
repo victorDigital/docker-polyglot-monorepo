@@ -36,7 +36,7 @@ export const resultChannels = {
 } as const;
 
 export interface TaskData {
-	expression: string;
+	number: number;
 	clientId: string;
 	timestamp: number;
 }
@@ -44,7 +44,7 @@ export interface TaskData {
 export interface TaskResult {
 	taskId: string;
 	clientId: string;
-	expression: string;
+	number: number;
 	result?: string;
 	error?: string;
 	language: string;
@@ -53,12 +53,12 @@ export interface TaskResult {
 
 export async function sendTask(
 	language: WorkerLanguage,
-	expression: string,
+	number: number,
 	clientId: string,
 	taskId: string
 ): Promise<void> {
 	const taskData: TaskData = {
-		expression,
+		number,
 		clientId,
 		timestamp: Date.now()
 	};
@@ -66,7 +66,7 @@ export async function sendTask(
 	const item = new Item(JSON.stringify(taskData), taskId);
 	await workQueues[language].addItem(redis, item);
 
-	console.log(`Task ${taskId} sent to ${language} queue: ${expression}`);
+	console.log(`Task ${taskId} sent to ${language} queue: compute primes up to ${number}`);
 }
 
 export { Item };

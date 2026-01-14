@@ -15,7 +15,7 @@
 
 	type Task = {
 		taskId: string;
-		expression: string;
+		number: number;
 		language: string;
 		sentAt: number;
 		status: 'pending' | 'completed';
@@ -31,14 +31,14 @@
 	};
 
 	let selectedLanguage = $state<LanguageType>({ label: 'Rust', icon: '🦀', key: 'rust' });
-	let query = $state('');
+	let query = $state(100000);
 	let isSending = $state(false);
 	let isConnected = $state(false);
 	let tasks = $state<Task[]>([]);
 	let clientId = $state('');
 	let eventSource: EventSource | null = null;
 
-	let canSend = $derived(query.trim().length > 0 && !isSending && isConnected);
+	let canSend = $derived(query > 0 && !isSending && isConnected);
 
 	function generateClientId() {
 		return `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -83,7 +83,7 @@
 	async function sendTask() {
 		if (!canSend) return;
 
-		const expression = query.trim();
+		const number = query;
 		const language = selectedLanguage.key;
 		const taskId = `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -91,20 +91,20 @@
 
 		const newTask: Task = {
 			taskId,
-			expression,
+			number,
 			language,
 			sentAt: Date.now(),
 			status: 'pending'
 		};
 
 		tasks = [newTask, ...tasks];
-		query = '';
+		query = 100000;
 
 		try {
 			const response = await fetch('/api/tasks', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ expression, language, clientId, taskId })
+				body: JSON.stringify({ number, language, clientId, taskId })
 			});
 
 			if (!response.ok) {
@@ -146,8 +146,9 @@
 	<div class="h-[10vh]"></div>
 
 	<InputGroup.Root class="rounded-3xl">
-		<InputGroup.Textarea
-			placeholder="Write equation to evaluate (e.g., 2 + 2)"
+		<InputGroup.Input
+			type="number"
+			placeholder="Enter a number (e.g., 100000)"
 			bind:value={query}
 			onkeydown={handleKeydown}
 		/>
@@ -198,8 +199,8 @@
 						<Table.Head class="w-3"></Table.Head>
 						<Table.Head>ID</Table.Head>
 						<Table.Head>Lang</Table.Head>
-						<Table.Head>Req</Table.Head>
-						<Table.Head class="text-right">Result</Table.Head>
+						<Table.Head>Number</Table.Head>
+						<Table.Head class="text-right">Primes Count</Table.Head>
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
@@ -214,7 +215,7 @@
 							</Table.Cell>
 							<Table.Cell>{task.taskId.slice(-7)}</Table.Cell>
 							<Table.Cell>{getLanguageIcon(task.language)}</Table.Cell>
-							<Table.Cell>{task.expression}</Table.Cell>
+							<Table.Cell>{task.number}</Table.Cell>
 							<Table.Cell class="text-right">
 								{#if task.status === 'pending'}
 									<span class="italic text-gray-500">Pending...</span>
@@ -228,6 +229,9 @@
 					{/each}
 				</Table.Body>
 			</Table.Root>
+			<p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+				The algorithm counts prime numbers up to the given number using the Sieve of Eratosthenes, a classic method that efficiently identifies primes by marking multiples of each prime starting from 2.
+			</p>
 		</div>
 	{/if}
 </div>

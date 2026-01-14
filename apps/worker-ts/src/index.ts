@@ -19,31 +19,48 @@ const workQueue = new WorkQueue(new KeyPrefix('typescript_jobs'));
 console.log('TypeScript Worker starting...');
 console.log(`Connected to Redis at ${redisHost}:${redisPort}`);
 
+function countPrimes(n: number): number {
+	if (n < 2) return 0;
+	
+	const isPrime = new Array(n + 1).fill(true);
+	isPrime[0] = isPrime[1] = false;
+	
+	for (let i = 2; i * i <= n; i++) {
+		if (isPrime[i]) {
+			for (let j = i * i; j <= n; j += i) {
+				isPrime[j] = false;
+			}
+		}
+	}
+	
+	return isPrime.filter(Boolean).length;
+}
+
 async function processTask(item: Item) {
 	try {
 		const data = item.dataJson();
-		const expression = data.expression;
+		const number = data.number;
 		const clientId = data.clientId;
 
-		console.log(`Processing task ${item.id}: ${expression}`);
+		console.log(`Processing task ${item.id}: count primes up to ${number}`);
 
-		// Evaluate the expression using eval (be careful in production!)
+		// Compute the number of primes <= number
 		let result: any;
 		let error: string | null = null;
 
 		try {
-			result = eval(expression);
+			result = countPrimes(number);
 			console.log(`Result: ${result}`);
 		} catch (e: any) {
 			error = e.message;
-			console.error(`Error evaluating expression: ${error}`);
+			console.error(`Error computing primes: ${error}`);
 		}
 
 		// Publish result back via Redis pub/sub
 		const resultData = {
 			taskId: item.id,
 			clientId,
-			expression,
+			number,
 			result: error ? undefined : String(result),
 			error,
 			language: 'typescript',

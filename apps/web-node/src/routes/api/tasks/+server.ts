@@ -5,10 +5,10 @@ import { sendTask, type WorkerLanguage } from '$lib/server/redis';
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { expression, language, clientId, taskId } = body;
+		const { number, language, clientId, taskId } = body;
 
-		if (!expression || typeof expression !== 'string') {
-			return json({ error: 'Expression is required' }, { status: 400 });
+		if (number === undefined || typeof number !== 'number' || number <= 0) {
+			return json({ error: 'A positive number is required' }, { status: 400 });
 		}
 
 		if (!language || !['rust', 'typescript', 'python'].includes(language)) {
@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'taskId is required' }, { status: 400 });
 		}
 
-		await sendTask(language as WorkerLanguage, expression, clientId, taskId);
+		await sendTask(language as WorkerLanguage, number, clientId, taskId);
 
 		return json({ 
 			success: true, 

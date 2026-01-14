@@ -6,7 +6,7 @@ use std::time::Duration;
 
 #[derive(Debug, Deserialize)]
 struct TaskData {
-    expression: String,
+    number: u64,
     #[serde(rename = "clientId")]
     client_id: String,
     timestamp: u64,
@@ -18,7 +18,7 @@ struct ResultData {
     task_id: String,
     #[serde(rename = "clientId")]
     client_id: String,
-    expression: String,
+    number: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -33,13 +33,12 @@ async fn process_task(
     publisher: &mut redis::aio::MultiplexedConnection,
     item: &Item,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let data: TaskData = serde_json::from_slice(item.data())?;
+    let data: TaskData = serde_json::from_slice(&item.data)?;
     
-    println!("Processing task {}: {}", item.id(), data.expression);
+    println!("Processing task {}: count primes up to {}", item.id, data.number);
     
-    // Evaluate the expression using evalexpr or a simple parser
-    // For now, we'll use a simple eval approach (limited support)
-    let result_value = evaluate_expression(&data.expression);
+    // Compute the number of primes <= number
+    let result_value = count_primes(data.number);
     
     let (result, error) = match result_value {
         Ok(val) => {
@@ -47,16 +46,16 @@ async fn process_task(
             (Some(val.to_string()), None)
         }
         Err(e) => {
-            println!("Error evaluating expression: {}", e);
+            println!("Error computing primes: {}", e);
             (None, Some(e))
         }
     };
     
     // Publish result back via Redis pub/sub
     let result_data = ResultData {
-        task_id: item.id().to_string(),
+        task_id: item.id.to_string(),
         client_id: data.client_id,
-        expression: data.expression,
+        number: data.number,
         result,
         error,
         language: "rust".to_string(),
@@ -67,7 +66,7 @@ async fn process_task(
     
     let result_json = serde_json::to_string(&result_data)?;
     publisher.publish::<_, _, ()>("results:rust", result_json).await?;
-    println!("Published result for task {}", item.id());
+    println!("Published result for task {}", item.id);
     
     // Mark task as complete
     work_queue.complete(db, item).await?;
@@ -75,47 +74,28 @@ async fn process_task(
     Ok(())
 }
 
-fn evaluate_expression(expr: &str) -> Result<f64, String> {
-    // Simple expression evaluator for basic arithmetic
-    // In production, you'd want to use a proper parser library like evalexpr
-    
-    // Remove whitespace
-    let expr = expr.trim().replace(" ", "");
-    
-    // Try to parse simple operations
-    if let Some(pos) = expr.find('+') {
-        let left = &expr[..pos];
-        let right = &expr[pos+1..];
-        let left_val: f64 = left.parse().map_err(|e| format!("Parse error: {}", e))?;
-        let right_val: f64 = right.parse().map_err(|e| format!("Parse error: {}", e))?;
-        return Ok(left_val + right_val);
-    } else if let Some(pos) = expr.find('-') {
-        if pos > 0 {  // Not a negative number
-            let left = &expr[..pos];
-            let right = &expr[pos+1..];
-            let left_val: f64 = left.parse().map_err(|e| format!("Parse error: {}", e))?;
-            let right_val: f64 = right.parse().map_err(|e| format!("Parse error: {}", e))?;
-            return Ok(left_val - right_val);
-        }
-    } else if let Some(pos) = expr.find('*') {
-        let left = &expr[..pos];
-        let right = &expr[pos+1..];
-        let left_val: f64 = left.parse().map_err(|e| format!("Parse error: {}", e))?;
-        let right_val: f64 = right.parse().map_err(|e| format!("Parse error: {}", e))?;
-        return Ok(left_val * right_val);
-    } else if let Some(pos) = expr.find('/') {
-        let left = &expr[..pos];
-        let right = &expr[pos+1..];
-        let left_val: f64 = left.parse().map_err(|e| format!("Parse error: {}", e))?;
-        let right_val: f64 = right.parse().map_err(|e| format!("Parse error: {}", e))?;
-        if right_val == 0.0 {
-            return Err("Division by zero".to_string());
-        }
-        return Ok(left_val / right_val);
+fn count_primes(n: u64) -> Result<u64, String> {
+    if n < 2 {
+        return Ok(0);
     }
     
-    // If no operator found, try to parse as a number
-    expr.parse::<f64>().map_err(|e| format!("Parse error: {}", e))
+    let mut is_prime = vec![true; (n + 1) as usize];
+    is_prime[0] = false;
+    is_prime[1] = false;
+    
+    let sqrt_n = (n as f64).sqrt() as u64;
+    for i in 2..=sqrt_n {
+        if is_prime[i as usize] {
+            let mut j = i * i;
+            while j <= n {
+                is_prime[j as usize] = false;
+                j += i;
+            }
+        }
+    }
+    
+    let count = is_prime.iter().filter(|&&p| p).count() as u64;
+    Ok(count)
 }
 
 #[tokio::main]
