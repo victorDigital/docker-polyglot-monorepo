@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as InputGroup from '$lib/components/ui/input-group/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-  import * as Table from '$lib/components/ui/table/index.js';
+	import * as Table from '$lib/components/ui/table/index.js';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { Badge } from '$lib/components/ui/badge';
@@ -31,41 +31,32 @@
 	};
 
 	let selectedLanguage = $state<LanguageType>({ label: 'Rust', icon: '🦀', key: 'rust' });
-	let query = $state<string>('');
-	let isSending = $state<boolean>(false);
-	let isConnected = $state<boolean>(false);
+	let query = $state('');
+	let isSending = $state(false);
+	let isConnected = $state(false);
 	let tasks = $state<Task[]>([]);
-	let clientId = $state<string>('');
+	let clientId = $state('');
 	let eventSource: EventSource | null = null;
 
 	let canSend = $derived(query.trim().length > 0 && !isSending && isConnected);
 
-	// Generate a unique client ID
-	function generateClientId(): string {
+	function generateClientId() {
 		return `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 	}
 
-	// Connect to SSE endpoint for real-time results
 	function connectToResults() {
-		if (eventSource) {
-			eventSource.close();
-		}
+		if (eventSource) eventSource.close();
 
 		eventSource = new EventSource(`/api/results?clientId=${encodeURIComponent(clientId)}`);
 
-		eventSource.onopen = () => {
-			console.log('SSE connection opened');
-		};
+		eventSource.onopen = () => console.log('SSE connected');
 
 		eventSource.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data);
-
 				if (data.type === 'connected') {
 					isConnected = true;
-					console.log('Connected to results stream');
 				} else if (data.type === 'result') {
-					// Update the existing task with the result
 					const taskIndex = tasks.findIndex(task => task.taskId === data.taskId);
 					if (taskIndex !== -1) {
 						tasks[taskIndex] = {
@@ -75,77 +66,51 @@
 							error: data.error,
 							completedAt: data.timestamp
 						};
-						// Force reactivity by reassigning the array
 						tasks = [...tasks];
 					}
-					console.log('Received result:', data);
 				}
 			} catch (error) {
-				console.error('Error parsing SSE message:', error);
+				console.error('SSE parse error:', error);
 			}
 		};
 
-		eventSource.onerror = (error) => {
-			console.error('SSE error:', error);
+		eventSource.onerror = () => {
 			isConnected = false;
-			// Reconnect after a delay
-			setTimeout(() => {
-				if (clientId) {
-					connectToResults();
-				}
-			}, 3000);
+			setTimeout(() => clientId && connectToResults(), 3000);
 		};
 	}
 
-	// Send task to the worker
 	async function sendTask() {
 		if (!canSend) return;
 
 		const expression = query.trim();
 		const language = selectedLanguage.key;
-
-		// Generate task ID upfront
 		const taskId = `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 		isSending = true;
 
-		// Add to tasks as pending immediately
-		const newTask = {
+		const newTask: Task = {
 			taskId,
 			expression,
 			language,
 			sentAt: Date.now(),
-			status: 'pending' as const
+			status: 'pending'
 		};
+
 		tasks = [newTask, ...tasks];
 		query = '';
 
 		try {
 			const response = await fetch('/api/tasks', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					expression,
-					language,
-					clientId,
-					taskId // Send the taskId to the server
-				})
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ expression, language, clientId, taskId })
 			});
 
-			const data = await response.json();
-
-			if (data.success) {
-				console.log('Task sent:', data.taskId);
-			} else {
-				console.error('Failed to send task:', data.error);
-				// Remove the task if sending failed
+			if (!response.ok) {
 				tasks = tasks.filter(t => t.taskId !== taskId);
 			}
-		} catch (error) {
-			console.error('Error sending task:', error);
-			// Remove the task if sending failed
+		} catch {
 			tasks = tasks.filter(t => t.taskId !== taskId);
 		} finally {
 			isSending = false;
@@ -159,7 +124,7 @@
 		}
 	}
 
-	function getLanguageIcon(language: string): string {
+	function getLanguageIcon(language: string) {
 		return availableLanguages[language]?.icon ?? '❓';
 	}
 
@@ -168,26 +133,18 @@
 		connectToResults();
 	});
 
-	onDestroy(() => {
-		if (eventSource) {
-			eventSource.close();
-		}
-	});
+	onDestroy(() => eventSource?.close());
 </script>
 
 <div class="container mx-auto max-w-2xl px-4">
-	<!-- Connection Status -->
 	<div class="fixed top-4 right-4">
-		{#if isConnected}
-			<Badge variant="default" class="bg-green-600">Connected</Badge>
-		{:else}
-			<Badge variant="destructive">Disconnected</Badge>
-		{/if}
+		<Badge variant={isConnected ? 'default' : 'destructive'} class={isConnected ? 'bg-green-600' : ''}>
+			{isConnected ? 'Connected' : 'Disconnected'}
+		</Badge>
 	</div>
 
 	<div class="h-[10vh]"></div>
 
-	<!-- Input Section -->
 	<InputGroup.Root class="rounded-3xl">
 		<InputGroup.Textarea
 			placeholder="Write equation to evaluate (e.g., 2 + 2)"
@@ -206,10 +163,7 @@
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content side="top" align="start">
 					{#each Object.entries(availableLanguages) as [key, lang]}
-						<DropdownMenu.Item
-							onclick={() => (selectedLanguage = lang)}
-							class="flex items-center gap-2"
-						>
+						<DropdownMenu.Item onclick={() => selectedLanguage = lang} class="flex items-center gap-2">
 							<span>{lang.icon}</span>
 							<span>{lang.label}</span>
 						</DropdownMenu.Item>
@@ -234,18 +188,14 @@
 	</InputGroup.Root>
 
 	{#if !isConnected}
-		<p class="mt-4 text-center text-sm text-gray-500">
-			Connecting to server... Please wait.
-		</p>
+		<p class="mt-4 text-center text-sm text-gray-500">Connecting to server...</p>
 	{:else if tasks.length > 0}
 		<div class="mt-8">
 			<h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Tasks</h2>
 			<Table.Root>
 				<Table.Header>
 					<Table.Row>
-						<Table.Head class="w-3">
-							<!-- icon/spinner -->
-						</Table.Head>
+						<Table.Head class="w-3"></Table.Head>
 						<Table.Head>ID</Table.Head>
 						<Table.Head>Lang</Table.Head>
 						<Table.Head>Req</Table.Head>

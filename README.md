@@ -20,42 +20,10 @@ docker compose watch
 docker compose up --build
 ```
 
-## Development
+## redis-work-queue
 
-All services use Docker Compose Watch for instant code synchronization:
+This monorepo was made to test and demonstrate the functionality of the [redis-work-queue](https://github.com/MeVitae/redis-work-queue) library, which provides a simple interface for creating and managing background workers using Redis as a message broker.
 
-- **Rust**: Changes to `src/` sync instantly, cargo-watch rebuilds
-- **Vite/Bun**: Changes to `src/` and `index.html` sync with HMR
-- **Python/uv**: Changes to `main.py` trigger auto-restart via watchdog
-- **TypeScript/Bun**: Changes to `src/` trigger rebuild via Bun watch
+## Verdict of redis-work-queue
 
-## Accessing Services
-
-- Vite Web: http://localhost:5173
-- Rust Worker: http://localhost:8080
-- Redis: localhost:6379
-
-## Testing Connectivity
-
-```bash
-# Check Redis connection from Python worker
-docker compose logs worker-py
-
-# Check Redis connection from TypeScript worker
-docker compose logs worker-ts
-
-# Test Rust worker
-curl http://localhost:8080
-curl http://localhost:8080/health
-```
-
-## Structure
-
-```
-/apps
-  /worker-rust   - Rust worker with multi-stage Dockerfile
-  /web-node      - Vite app with Bun and HMR
-  /worker-py     - Python worker with uv and watchdog
-  /worker-ts     - TypeScript worker with Bun
-docker-compose.yml
-```
+the functionality is basic but works as intended. it does not natively support getting the result of a job, but this can be implemented manually by storing results in Redis. and it lacks advanced features like those found in more mature libraries.
